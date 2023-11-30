@@ -4,6 +4,7 @@ import pandas as pd
 import requests
 import re
 import speedtest
+import argparse
 
 tpLink = '192.168.0.1'
 userName = 'admin'
@@ -56,12 +57,12 @@ def encodeLoginData(cookie):
     return {'encoded': encoded, 'nonce': cookie, 'URL': '../logon/loginJump.htm'}
 
 
-def checkMacsActive(cookieStr, activeWan=4):
+def checkMacsActive(cookieStr, activeWan):
     wanIfce = ['wan1', 'wan2', 'wan3', 'wan4']
 
     resList = []
     timeCheckStart = time.time()
-    for i in range(3):
+    for i in range(activeWan):
         wanState = pingMac(cookieStr, wanIfce[i])
         resList.append(wanState)
     timeCheckStop = time.time()
@@ -106,7 +107,7 @@ def pingMacWithTimout(cookieStr, macInterface, timeOut):
             resPing = pingKeyMac(cookieStr, 0)
         i += 1
 
-        if(resPing[0]):
+        if (resPing[0]):
             break
         pingEndTime = time.time()
         if pingEndTime - pingStartTime > timeOut:
@@ -117,7 +118,7 @@ def pingMacWithTimout(cookieStr, macInterface, timeOut):
     if DEBUG:
         print('Ping '+macInterface+' time ', pingEndTime - pingStartTime)
 
-    if int(resPing[1][0]) == 0 and len(resPing[1]) > 2:
+    if resPing[0] and int(resPing[1][0]) == 0 and len(resPing[1]) >= 1:
         return True
     else:
         return False
@@ -164,7 +165,7 @@ def pingKeyMac(cookieStr, key):
     total_count = int(infoArray[8])
     current_count = int(infoArray[9])
 
-    if(total_count == current_count):
+    if (total_count == current_count):
         return [True, resultArray]
     else:
         return [False, resultArray]
@@ -210,6 +211,21 @@ def speedTest():
 
 if __name__ == '__main__':
 
+    parser = argparse.ArgumentParser(description='Script auto change mac address of tp-link load balancer via http')
+
+    # Add the command-line option
+    parser.add_argument('-n','--number_wan_port', type=int, default=3, help='Number of wan ports',choices=range(1,5))
+
+    # Parse the command-line arguments
+    args = parser.parse_args()
+
+    # Access the value of the option
+    number_of_want_port = args.number_wan_port
+
+    # Your script logic here
+    print(f'Start with of wan ports: {number_of_want_port}')
+
+
     cookie = requests.get('http://{}/'.format(tpLink)).cookies.get('COOKIE')
 
     cookieStr = 'COOKIE={}'.format(cookie)
@@ -219,7 +235,7 @@ if __name__ == '__main__':
     print(login(dataAuth, cookieStr))
 
     macArray = ml['MAC'].to_numpy()
-    macStates = checkMacsActive(cookieStr, 3)
+    macStates = checkMacsActive(cookieStr, number_of_want_port)
     macWans = getMacWanList(cookieStr)
     currCheckMac = 0
 
@@ -228,7 +244,7 @@ if __name__ == '__main__':
     # change auto
 
     for i in range(len(macStates)):
-        if(macStates[i]):
+        if (macStates[i]):
             continue
         while currCheckMac < macArray.size:
             # prevent that have same mac in update list
@@ -245,10 +261,10 @@ if __name__ == '__main__':
             # check status of new mac
             time.sleep(10)
             nState = pingMacWithTimout(cookieStr, 'wan{}'.format(i+1), 5)
-            if(nState):
+            if (nState):
                 print('Applied new mac {} to wan{}'.format(macWans[i], i+1))
                 break
-        if(currCheckMac >= macArray.size):
+        if (currCheckMac >= macArray.size):
             print("Sorry mac array reach limit before done task ,at wan{}".format(i+1))
 
     logout(cookieStr)
