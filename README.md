@@ -9,4 +9,4 @@ Tools box:
 ### Where to find mac address ?
 Go around the building and scan the mac address using the Airodump-ng tool on Kali Linux. You will find the right address for spoofing.
 ### Why i write this ?
-I just practice explaining skill what I done, what use my project do. I will have more project and more exciting products in future !
+I just practice explaining skill what I done, what my project do. I will have more project and more exciting products in future !
